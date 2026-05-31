@@ -17,6 +17,15 @@ export interface Paper {
   pdfUrl?: string
 }
 
+/** /api/papers 응답 형태 (server와 미러링) */
+export interface PapersResponse {
+  papers: Paper[]
+  /** 전체 검색 결과 수 (페이지네이션용) */
+  total: number
+  page: number
+  pageSize: number
+}
+
 /** LLM 요약 결과 (Gemini, BFF 경유) */
 export interface PaperSummary {
   paperId: string
