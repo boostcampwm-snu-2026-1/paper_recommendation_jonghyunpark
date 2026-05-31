@@ -7,6 +7,8 @@ export interface PapersQuery {
   q?: string
   /** arXiv 카테고리(콤마 구분, 예: "cs.AI,cs.LG") */
   category?: string
+  /** 관심 토픽(콤마 구분 구문). 여러 개는 OR로 묶인다. */
+  topics?: string
   /** 1-based 페이지 */
   page?: number
   pageSize?: number
@@ -17,6 +19,7 @@ export function fetchPapers(query: PapersQuery): Promise<PapersResponse> {
   return apiGet<PapersResponse>('/papers', {
     q: query.q,
     category: query.category,
+    topics: query.topics,
     page: query.page,
     pageSize: query.pageSize,
     sort: query.sort,

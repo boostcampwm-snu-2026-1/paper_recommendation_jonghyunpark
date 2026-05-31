@@ -12,6 +12,8 @@ export interface FetchPapersParams {
   q?: string
   /** arXiv 카테고리(콤마 구분, 예: "cs.AI,cs.LG") */
   category?: string
+  /** 관심 토픽(콤마 구분 구문). 여러 개는 OR로 묶는다. 예: "vision language action,continual learning" */
+  topics?: string
   /** 1-based 페이지 */
   page?: number
   pageSize?: number
@@ -75,22 +77,37 @@ function entryToPaper(entry: ArxivEntry): Paper {
   }
 }
 
-/** q/category 로 arXiv search_query 문자열을 만든다. */
-function buildSearchQuery(q?: string, category?: string): string {
+/** 구문에 공백이 있으면 따옴표로 묶어 정확도를 높인다. */
+function arxivTerm(phrase: string): string {
+  return phrase.includes(' ') ? `all:"${phrase}"` : `all:${phrase}`
+}
+
+function splitCsv(value?: string): string[] {
+  return (value ?? '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean)
+}
+
+/** q/category/topics 로 arXiv search_query 문자열을 만든다. */
+function buildSearchQuery(q?: string, category?: string, topics?: string): string {
   const parts: string[] = []
 
-  const cats = (category ?? '')
-    .split(',')
-    .map((c) => c.trim())
-    .filter(Boolean)
+  const cats = splitCsv(category)
   if (cats.length > 0) {
     parts.push(`(${cats.map((c) => `cat:${c}`).join(' OR ')})`)
   }
 
-  const keyword = q?.trim()
-  if (keyword) parts.push(`all:${keyword}`)
+  // 관심 토픽들은 OR로 묶는다(아무거나 매칭되면 피드에 노출)
+  const topicList = splitCsv(topics)
+  if (topicList.length > 0) {
+    parts.push(`(${topicList.map(arxivTerm).join(' OR ')})`)
+  }
 
-  // q·category 둘 다 없으면 CS/AI 최신 피드를 기본값으로
+  const keyword = q?.trim()
+  if (keyword) parts.push(arxivTerm(keyword))
+
+  // 아무 조건도 없으면 CS/AI 최신 피드를 기본값으로
   if (parts.length === 0) return `cat:${DEFAULT_CATEGORY}`
   return parts.join(' AND ')
 }
@@ -101,7 +118,7 @@ export async function fetchPapers(params: FetchPapersParams): Promise<PapersResp
   const start = (page - 1) * pageSize
 
   const query = new URLSearchParams({
-    search_query: buildSearchQuery(params.q, params.category),
+    search_query: buildSearchQuery(params.q, params.category, params.topics),
     start: String(start),
     max_results: String(pageSize),
     sortBy: params.sort === 'relevance' ? 'relevance' : 'submittedDate',

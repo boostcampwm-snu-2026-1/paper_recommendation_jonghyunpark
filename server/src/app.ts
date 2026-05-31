@@ -9,14 +9,16 @@ app.get('/api/health', (c) =>
   c.json({ status: 'ok', service: 'paper-recommendation-server' }),
 )
 
-// arXiv 프록시 — 검색·카테고리·페이지 (XML→JSON 정규화)
-//   ?q=키워드 &category=cs.AI,cs.LG &page=1 &pageSize=20 &sort=recent|relevance
+// arXiv 프록시 — 검색·카테고리·토픽·페이지 (XML→JSON 정규화)
+//   ?q=키워드 &category=cs.AI,cs.LG &topics=vision language action,continual learning
+//   &page=1 &pageSize=20 &sort=recent|relevance
 app.get('/api/papers', async (c) => {
-  const { q, category, page, pageSize, sort } = c.req.query()
+  const { q, category, topics, page, pageSize, sort } = c.req.query()
   try {
     const result = await fetchPapers({
       q,
       category,
+      topics,
       page: page ? Number(page) : undefined,
       pageSize: pageSize ? Number(pageSize) : undefined,
       sort: sort === 'relevance' ? 'relevance' : 'recent',
