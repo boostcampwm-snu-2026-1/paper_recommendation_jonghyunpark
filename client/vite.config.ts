@@ -17,7 +17,9 @@ export default defineConfig({
     watch: process.env.VITE_USE_POLLING
       ? { usePolling: true, interval: 300 }
       : undefined,
-    // BFF(/api/*)는 Vercel Functions로 배포되며, 로컬에서는 필요 시 프록시를 추가한다.
-    // proxy: { '/api': 'http://localhost:3000' },
+    // 로컬 개발 시 /api 요청을 server(BFF, 3000 포트)로 프록시한다.
+    proxy: {
+      '/api': 'http://localhost:3000',
+    },
   },
 })
