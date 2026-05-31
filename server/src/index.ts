@@ -1,3 +1,4 @@
+import './env.js' // 반드시 최상단 — app/interestStore 가 process.env 를 읽기 전에 .env 로드
 import { serve } from '@hono/node-server'
 import { app } from './app.js'
 
