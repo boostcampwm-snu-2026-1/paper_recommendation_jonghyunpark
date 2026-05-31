@@ -48,3 +48,17 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   }
   return res.json() as Promise<T>
 }
+
+/** POST 요청 (JSON 본문). */
+export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) {
+    throw new ApiError(`API 요청 실패: ${path}`, res.status)
+  }
+  return res.json() as Promise<T>
+}

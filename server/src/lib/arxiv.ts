@@ -139,3 +139,15 @@ export async function fetchPapers(params: FetchPapersParams): Promise<PapersResp
 
   return { papers, total, page, pageSize }
 }
+
+/** arXiv ID로 단일 논문 조회 (상세 페이지용). 없으면 null. */
+export async function fetchPaperById(id: string): Promise<Paper | null> {
+  const query = new URLSearchParams({ id_list: id, max_results: '1' })
+  const res = await fetch(`${ARXIV_ENDPOINT}?${query.toString()}`)
+  if (!res.ok) {
+    throw new Error(`arXiv API 응답 오류: ${res.status}`)
+  }
+  const parsed = parser.parse(await res.text())
+  const entry = toArray<ArxivEntry>(parsed.feed?.entry)[0]
+  return entry ? entryToPaper(entry) : null
+}

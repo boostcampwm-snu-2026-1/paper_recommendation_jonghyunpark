@@ -1,6 +1,8 @@
 import { Hono } from 'hono'
-import { fetchPapers } from './lib/arxiv.js'
+import { fetchPapers, fetchPaperById } from './lib/arxiv.js'
 import { interestStore } from './lib/interestStore.js'
+import { summarizePaper } from './lib/gemini.js'
+import type { PaperSummary } from './types/paper.js'
 
 // BFF 라우터. 외부 API(arXiv / Semantic Scholar / Gemini)는 모두 이 뒤에 숨긴다.
 export const app = new Hono()
@@ -28,6 +30,19 @@ app.get('/api/papers', async (c) => {
   } catch (err) {
     console.error('[api/papers] error:', err)
     return c.json({ error: 'arXiv 논문을 가져오지 못했습니다.' }, 502)
+  }
+})
+
+// 단일 논문 조회 (상세 페이지용)
+app.get('/api/papers/:id', async (c) => {
+  const id = c.req.param('id')
+  try {
+    const paper = await fetchPaperById(id)
+    if (!paper) return c.json({ error: '논문을 찾을 수 없습니다.' }, 404)
+    return c.json(paper)
+  } catch (err) {
+    console.error('[api/papers/:id] error:', err)
+    return c.json({ error: '논문을 가져오지 못했습니다.' }, 502)
   }
 })
 
@@ -63,8 +78,36 @@ app.put('/api/interests/:userId', async (c) => {
   return c.json({ ok: true })
 })
 
+// 논문 초록 LLM 요약 (Gemini, 키는 서버 .env)
+// 같은 논문 중복 호출을 막기 위한 인메모리 캐시 (추후 MongoDB로 이전 예정)
+const summaryCache = new Map<string, PaperSummary>()
+
+app.post('/api/summarize', async (c) => {
+  const body = await c.req.json().catch(() => null)
+  const paperId: unknown = body?.paperId
+  const title: unknown = body?.title
+  const abstract: unknown = body?.abstract
+
+  if (typeof paperId !== 'string' || typeof abstract !== 'string' || !abstract) {
+    return c.json({ error: 'paperId, abstract 가 필요합니다.' }, 400)
+  }
+
+  const cached = summaryCache.get(paperId)
+  if (cached) return c.json(cached)
+
+  try {
+    const { summary, keywords } = await summarizePaper({
+      title: typeof title === 'string' ? title : '',
+      abstract,
+    })
+    const result: PaperSummary = { paperId, summary, keywords }
+    summaryCache.set(paperId, result)
+    return c.json(result)
+  } catch (err) {
+    console.error('[api/summarize] error:', err)
+    return c.json({ error: '요약 생성에 실패했습니다.' }, 502)
+  }
+})
+
 // TODO(다음 task): 유사 논문 — arXiv ID → Semantic Scholar
 // app.get('/api/similar', ...)
-
-// TODO(다음 task): 초록 LLM 요약 — Gemini (키는 서버 .env)
-// app.post('/api/summarize', ...)

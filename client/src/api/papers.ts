@@ -1,5 +1,5 @@
 import { apiGet } from './client'
-import type { PapersResponse } from '@/types/paper'
+import type { Paper, PapersResponse } from '@/types/paper'
 
 // /api/papers (BFF → arXiv) 호출. 파라미터는 server의 쿼리와 1:1 대응.
 export interface PapersQuery {
@@ -24,4 +24,9 @@ export function fetchPapers(query: PapersQuery): Promise<PapersResponse> {
     pageSize: query.pageSize,
     sort: query.sort,
   })
+}
+
+/** 단일 논문 조회 (상세 페이지용) */
+export function fetchPaperById(id: string): Promise<Paper> {
+  return apiGet<Paper>(`/papers/${id}`)
 }

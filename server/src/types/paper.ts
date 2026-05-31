@@ -25,3 +25,12 @@ export interface PapersResponse {
   page: number
   pageSize: number
 }
+
+/** /api/summarize 응답 — Gemini 요약 결과 */
+export interface PaperSummary {
+  paperId: string
+  /** 한국어 핵심 요약 */
+  summary: string
+  /** 핵심 키워드 */
+  keywords: string[]
+}

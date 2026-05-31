@@ -31,4 +31,6 @@ export interface PaperSummary {
   paperId: string
   /** 3~4줄 핵심 요약 */
   summary: string
+  /** 핵심 키워드 */
+  keywords: string[]
 }
