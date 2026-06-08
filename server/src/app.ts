@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { fetchPapers, fetchPaperById } from './lib/arxiv.js'
 import { interestStore } from './lib/interestStore.js'
 import { summarizePaper } from './lib/gemini.js'
+import { summaryStore } from './lib/summaryStore.js'
 import type { PaperSummary } from './types/paper.js'
 
 // BFF 라우터. 외부 API(arXiv / Semantic Scholar / Gemini)는 모두 이 뒤에 숨긴다.
@@ -79,9 +80,7 @@ app.put('/api/interests/:userId', async (c) => {
 })
 
 // 논문 초록 LLM 요약 (Gemini, 키는 서버 .env)
-// 같은 논문 중복 호출을 막기 위한 인메모리 캐시 (추후 MongoDB로 이전 예정)
-const summaryCache = new Map<string, PaperSummary>()
-
+// paperId 기준으로 summaryStore(MongoDB/인메모리)에 캐시해 중복 호출을 막는다.
 app.post('/api/summarize', async (c) => {
   const body = await c.req.json().catch(() => null)
   const paperId: unknown = body?.paperId
@@ -92,7 +91,7 @@ app.post('/api/summarize', async (c) => {
     return c.json({ error: 'paperId, abstract 가 필요합니다.' }, 400)
   }
 
-  const cached = summaryCache.get(paperId)
+  const cached = await summaryStore.get(paperId)
   if (cached) return c.json(cached)
 
   try {
@@ -101,7 +100,7 @@ app.post('/api/summarize', async (c) => {
       abstract,
     })
     const result: PaperSummary = { paperId, summary, keywords }
-    summaryCache.set(paperId, result)
+    await summaryStore.set(paperId, result)
     return c.json(result)
   } catch (err) {
     console.error('[api/summarize] error:', err)
