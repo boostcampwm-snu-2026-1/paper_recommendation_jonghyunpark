@@ -1,18 +1,22 @@
 import { useUserPrefs } from '@/store/userPrefs'
+import PaperList from '@/components/PaperList'
 
-/** 내 서재 (F7) — 북마크한 논문 목록. 현재는 골격(스토어 연동만). */
+/** 내 서재 (F7) — 북마크한 논문 목록. 각 카드의 ⭐로 제거. */
 export default function LibraryPage() {
   const bookmarks = useUserPrefs((s) => s.bookmarks)
 
   return (
     <section>
       <h1 className="text-2xl font-bold">내 서재</h1>
-      <p className="mt-2 text-sm text-gray-500">북마크한 논문 {bookmarks.length}편</p>
+      <p className="mt-2 text-sm text-gray-500">저장한 논문 {bookmarks.length}편</p>
 
-      <div className="mt-6 rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-400 dark:border-gray-700">
-        {bookmarks.length === 0
-          ? '아직 북마크한 논문이 없습니다.'
-          : 'TODO(F7): 북마크 PaperList + 삭제'}
+      <div className="mt-6">
+        <PaperList
+          papers={bookmarks}
+          isLoading={false}
+          isError={false}
+          emptyMessage="아직 저장한 논문이 없습니다. 논문 카드의 ☆를 눌러 내 서재에 추가하세요."
+        />
       </div>
     </section>
   )

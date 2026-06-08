@@ -5,10 +5,12 @@ import OnboardingPage from '@/pages/OnboardingPage'
 import SearchPage from '@/pages/SearchPage'
 import PaperDetailPage from '@/pages/PaperDetailPage'
 import LibraryPage from '@/pages/LibraryPage'
+import LoginPage from '@/pages/LoginPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 
-// 기획서 5.2의 5개 페이지 라우트 골격
+// 기획서 5.2의 페이지 + 로그인
 export const router = createBrowserRouter([
+  { path: '/login', element: <LoginPage /> },
   {
     path: '/',
     element: <Layout />,

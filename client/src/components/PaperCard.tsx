@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { Paper } from '@/types/paper'
+import BookmarkButton from './BookmarkButton'
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
@@ -16,12 +17,15 @@ function formatAuthors(authors: string[]): string {
 export default function PaperCard({ paper }: { paper: Paper }) {
   return (
     <article className="rounded-lg border border-gray-200 bg-white p-4 transition hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
-      <Link
-        to={`/paper/${paper.id}`}
-        className="text-base font-semibold text-gray-900 hover:text-blue-600 dark:text-gray-100"
-      >
-        {paper.title}
-      </Link>
+      <div className="flex items-start justify-between gap-2">
+        <Link
+          to={`/paper/${paper.id}`}
+          className="text-base font-semibold text-gray-900 hover:text-blue-600 dark:text-gray-100"
+        >
+          {paper.title}
+        </Link>
+        <BookmarkButton paper={paper} />
+      </div>
 
       <p className="mt-1 text-sm text-gray-500">{formatAuthors(paper.authors)}</p>
 

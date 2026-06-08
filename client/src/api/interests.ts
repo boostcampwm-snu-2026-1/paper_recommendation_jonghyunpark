@@ -7,12 +7,12 @@ export interface InterestsPayload {
 }
 
 export function fetchInterests(userId: string): Promise<InterestsPayload> {
-  return apiGet<InterestsPayload>(`/interests/${userId}`)
+  return apiGet<InterestsPayload>(`/interests/${encodeURIComponent(userId)}`)
 }
 
 export function saveInterests(
   userId: string,
   payload: InterestsPayload,
 ): Promise<{ ok: boolean }> {
-  return apiPut<{ ok: boolean }>(`/interests/${userId}`, payload)
+  return apiPut<{ ok: boolean }>(`/interests/${encodeURIComponent(userId)}`, payload)
 }
