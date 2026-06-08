@@ -1,9 +1,10 @@
 import { Hono } from 'hono'
 import { fetchPapers, fetchPaperById } from './lib/arxiv.js'
 import { interestStore } from './lib/interestStore.js'
+import { bookmarkStore } from './lib/bookmarkStore.js'
 import { summarizePaper } from './lib/gemini.js'
 import { summaryStore } from './lib/summaryStore.js'
-import type { PaperSummary } from './types/paper.js'
+import type { Paper, PaperSummary } from './types/paper.js'
 
 // BFF 라우터. 외부 API(arXiv / Semantic Scholar / Gemini)는 모두 이 뒤에 숨긴다.
 export const app = new Hono()
@@ -76,6 +77,35 @@ app.put('/api/interests/:userId', async (c) => {
     interests: onlyStrings(body.interests),
     customKeywords: onlyStrings(body.customKeywords),
   })
+  return c.json({ ok: true })
+})
+
+// 북마크 저장/조회 (userId 기준, users 문서의 bookmarks 필드)
+app.get('/api/bookmarks/:userId', async (c) => {
+  const bookmarks = await bookmarkStore.get(c.req.param('userId'))
+  return c.json({ bookmarks })
+})
+
+app.put('/api/bookmarks/:userId', async (c) => {
+  const userId = c.req.param('userId')
+  if (!userId || userId.length > 100) {
+    return c.json({ error: '유효하지 않은 userId' }, 400)
+  }
+
+  const body = await c.req.json().catch(() => null)
+  if (!body || !Array.isArray(body.bookmarks)) {
+    return c.json({ error: 'bookmarks 배열이 필요합니다.' }, 400)
+  }
+
+  // 가벼운 정규화: id(string)가 있는 항목만, 최대 500개
+  const bookmarks = (body.bookmarks as unknown[])
+    .filter(
+      (b): b is { id: string } =>
+        typeof b === 'object' && b !== null && typeof (b as { id?: unknown }).id === 'string',
+    )
+    .slice(0, 500) as Paper[]
+
+  await bookmarkStore.set(userId, bookmarks)
   return c.json({ ok: true })
 })
 

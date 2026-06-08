@@ -19,8 +19,13 @@ export default function Layout() {
 
   const handleLogout = () => {
     logout()
-    // 다음 사용자를 위해 로컬 관심사 상태 초기화 (서버 데이터는 그대로 보존됨)
-    useUserPrefs.setState({ interests: [], customKeywords: [], onboarded: false })
+    // 다음 사용자를 위해 로컬 상태 초기화 (서버 데이터는 그대로 보존됨)
+    useUserPrefs.setState({
+      interests: [],
+      customKeywords: [],
+      bookmarks: [],
+      onboarded: false,
+    })
     navigate('/login', { replace: true })
   }
 
