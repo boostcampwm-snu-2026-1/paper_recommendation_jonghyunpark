@@ -67,6 +67,22 @@ function workToPaper(w: OpenAlexWork): Paper {
   }
 }
 
+/** arXiv ID로 단일 논문 조회 (상세 페이지 fallback). 없으면 null. */
+export async function fetchPaperByIdOpenAlex(id: string): Promise<Paper | null> {
+  const qs = new URLSearchParams({
+    filter: `locations.landing_page_url:https://arxiv.org/abs/${id}`,
+    per_page: '1',
+    mailto: MAILTO,
+  })
+  const res = await fetch(`${ENDPOINT}?${qs.toString()}`)
+  if (!res.ok) {
+    throw new Error(`OpenAlex API 응답 오류: ${res.status}`)
+  }
+  const data = (await res.json()) as { results?: OpenAlexWork[] }
+  const work = (data.results ?? [])[0]
+  return work ? workToPaper(work) : null
+}
+
 export async function fetchPapersOpenAlex(
   params: FetchPapersParams,
 ): Promise<PapersResponse> {

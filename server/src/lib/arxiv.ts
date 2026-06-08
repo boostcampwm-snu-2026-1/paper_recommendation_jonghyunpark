@@ -1,6 +1,6 @@
 import { XMLParser } from 'fast-xml-parser'
 import type { Paper, PapersResponse } from '../types/paper.js'
-import { fetchPapersOpenAlex } from './openalex.js'
+import { fetchPapersOpenAlex, fetchPaperByIdOpenAlex } from './openalex.js'
 
 // arXiv API(Atom XML) 호출 + Paper[] 정규화.
 // 외부 API는 BFF 뒤에 숨기고, 프론트엔드에는 항상 이 JSON 형태로만 내려준다.
@@ -17,11 +17,11 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-async function arxivFetch(url: string, maxRetries = 2): Promise<Response> {
+async function arxivFetch(url: string, maxRetries = 1): Promise<Response> {
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } })
     if ((res.status === 429 || res.status === 503) && attempt < maxRetries) {
-      await sleep(1000 * 2 ** attempt) // 1s → 2s
+      await sleep(600 * 2 ** attempt) // 0.6s (그 후 OpenAlex fallback)
       continue
     }
     return res
@@ -173,8 +173,7 @@ export async function fetchPapers(params: FetchPapersParams): Promise<PapersResp
   }
 }
 
-/** arXiv ID로 단일 논문 조회 (상세 페이지용). 없으면 null. */
-export async function fetchPaperById(id: string): Promise<Paper | null> {
+async function fetchPaperByIdArxiv(id: string): Promise<Paper | null> {
   const query = new URLSearchParams({ id_list: id, max_results: '1' })
   const res = await arxivFetch(`${ARXIV_ENDPOINT}?${query.toString()}`)
   if (!res.ok) {
@@ -183,4 +182,16 @@ export async function fetchPaperById(id: string): Promise<Paper | null> {
   const parsed = parser.parse(await res.text())
   const entry = toArray<ArxivEntry>(parsed.feed?.entry)[0]
   return entry ? entryToPaper(entry) : null
+}
+
+/** 단일 논문 조회 (상세 페이지용). arXiv 우선, 실패 시 OpenAlex fallback. 없으면 null. */
+export async function fetchPaperById(id: string): Promise<Paper | null> {
+  try {
+    return await fetchPaperByIdArxiv(id)
+  } catch (err) {
+    console.warn(
+      `[paper:${id}] arXiv 실패 → OpenAlex fallback: ${(err as Error).message}`,
+    )
+    return fetchPaperByIdOpenAlex(id)
+  }
 }
