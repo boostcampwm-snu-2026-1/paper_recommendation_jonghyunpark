@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import { usePaper } from '@/api/usePaper'
 import SummaryBox from '@/components/SummaryBox'
+import BookmarkButton from '@/components/BookmarkButton'
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
@@ -50,7 +51,10 @@ export default function PaperDetailPage() {
       </div>
 
       <header>
-        <h1 className="text-2xl font-bold">{paper.title}</h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-2xl font-bold">{paper.title}</h1>
+          <BookmarkButton paper={paper} showLabel />
+        </div>
         <p className="mt-2 text-sm text-gray-500">{paper.authors.join(', ')}</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {paper.publishedAt && (
