@@ -1,11 +1,32 @@
 import { XMLParser } from 'fast-xml-parser'
 import type { Paper, PapersResponse } from '../types/paper.js'
+import { fetchPapersOpenAlex } from './openalex.js'
 
 // arXiv API(Atom XML) 호출 + Paper[] 정규화.
 // 외부 API는 BFF 뒤에 숨기고, 프론트엔드에는 항상 이 JSON 형태로만 내려준다.
+// arXiv가 레이트리밋(429) 등으로 실패하면 OpenAlex로 자동 fallback 한다.
 
 const ARXIV_ENDPOINT = 'https://export.arxiv.org/api/query'
 const DEFAULT_CATEGORY = 'cs.AI'
+
+// arXiv는 과도한 호출에 429를 던진다. 자기 식별 User-Agent + 429/503 백오프 재시도로 완화.
+const USER_AGENT =
+  'paper-recommendation/0.1 (research demo; contact: mprlabsnu@gmail.com)'
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function arxivFetch(url: string, maxRetries = 2): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } })
+    if ((res.status === 429 || res.status === 503) && attempt < maxRetries) {
+      await sleep(1000 * 2 ** attempt) // 1s → 2s
+      continue
+    }
+    return res
+  }
+}
 
 export interface FetchPapersParams {
   /** 키워드 검색어 */
@@ -112,7 +133,7 @@ function buildSearchQuery(q?: string, category?: string, topics?: string): strin
   return parts.join(' AND ')
 }
 
-export async function fetchPapers(params: FetchPapersParams): Promise<PapersResponse> {
+async function fetchPapersArxiv(params: FetchPapersParams): Promise<PapersResponse> {
   const page = Math.max(1, params.page ?? 1)
   const pageSize = Math.min(50, Math.max(1, params.pageSize ?? 20))
   const start = (page - 1) * pageSize
@@ -125,7 +146,7 @@ export async function fetchPapers(params: FetchPapersParams): Promise<PapersResp
     sortOrder: 'descending',
   })
 
-  const res = await fetch(`${ARXIV_ENDPOINT}?${query.toString()}`)
+  const res = await arxivFetch(`${ARXIV_ENDPOINT}?${query.toString()}`)
   if (!res.ok) {
     throw new Error(`arXiv API 응답 오류: ${res.status}`)
   }
@@ -140,10 +161,22 @@ export async function fetchPapers(params: FetchPapersParams): Promise<PapersResp
   return { papers, total, page, pageSize }
 }
 
+/** 추천/검색 피드. arXiv 우선, 실패 시 OpenAlex로 자동 fallback. */
+export async function fetchPapers(params: FetchPapersParams): Promise<PapersResponse> {
+  try {
+    return await fetchPapersArxiv(params)
+  } catch (err) {
+    console.warn(
+      `[papers] arXiv 실패 → OpenAlex fallback: ${(err as Error).message}`,
+    )
+    return fetchPapersOpenAlex(params)
+  }
+}
+
 /** arXiv ID로 단일 논문 조회 (상세 페이지용). 없으면 null. */
 export async function fetchPaperById(id: string): Promise<Paper | null> {
   const query = new URLSearchParams({ id_list: id, max_results: '1' })
-  const res = await fetch(`${ARXIV_ENDPOINT}?${query.toString()}`)
+  const res = await arxivFetch(`${ARXIV_ENDPOINT}?${query.toString()}`)
   if (!res.ok) {
     throw new Error(`arXiv API 응답 오류: ${res.status}`)
   }
